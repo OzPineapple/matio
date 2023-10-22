@@ -1,0 +1,5 @@
+core
+*.mat
+*.o
+*.out
+*.pdf
