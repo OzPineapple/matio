@@ -65,207 +65,144 @@ char * zundo( char * compress , unsigned int * size ){
 	return uncompress;
 }
 
-void printWeightMatrix( WeightMatrix matrix ){
-	printf("Edges: %i\tNodes: %i\n", matrix.edges, matrix.nodes );
-	for( unsigned int n=0; n<matrix.edges; n++ )
-		printf("%i\t%i\t%f\n", matrix.i[n], matrix.j[n], matrix.w[n] );
-}
+typedef struct {
+	uint8_t  text[116];
+	uint64_t subsystem_data_offset;
+	uint16_t version;
+	uint8_t  endian[2];
+} MATheader;
 
-void printMatrix( Matrix matrix ){
-	printf("%s{%i}( ", matrix.name, matrix.type );
-	int size = 1;
-	for( int i=0; i<matrix.dims_size; i++ ){
-		printf("%i%c ", matrix.dims[i], i == matrix.dims_size-1 ? 0 : ',' );
-		size *= matrix.dims[i];
-	}
-	printf(")[ ");
-	for( int i=0; i<size; i++ )
-		printf("%i%c ", matrix.data[i], i == size-1 ? 0 : ',' );
-	printf("]\n");
-}
+typedef struct {
+	uint8_t  complex:1;
+	uint8_t  global:1;
+	uint8_t  logical:1;
+	uint32_t sparce_ceros;
+	uint32_t class;
+	uint32_t dimentions;
+	int32_t  * shape;
+	uint32_t name_lenght;
+	uint8_t  * name;
+	uint32_t data_lenght;
+	uint32_t * data;
+} miMatrix;
 
-Matrix * initMatrix( char * buffer ){
-	int * p = (int*) buffer;
-	Matrix * matrix = malloc( sizeof( Matrix ) );
-	if(*p != 14) die("Matlab matrix was expected");
-	p+=2;
-	if(*p != 6 ) die("A uint32 flags was expected");
-	p+=2;
-	if(*p & 0x00000A00 ) die("This program is not desinged for complex numbers or logic matrix");
-	if((*p & 0x000000FF)  < 6 ) die("A number class was expected");
-	if((*p & 0x000000FF) != 6 ) warn("Data is expected to be double32, be careful");
-	p+=2;
-	if(*p != 5 ) die("A int32 dimensions array was expected");
-	p++;
-	matrix->dims_size = *p >> 2;
-	matrix->dims = malloc( *p );
-	memcpy( (char*) matrix->dims, (char*)(p+1), *p ); 
-	p+=1+(*p>>2);
-	if( *p&0xFFFF0000 ){
-		short size = (*p & 0xFFFF0000) >> 16;
-		short type = *p & 0x0000FFFF;
-		if( type != miINT8 ) die("Char array was expected (Compressed data) got %p on byte %p", type, (char*) p - buffer);
-		matrix->name = malloc( size + 1 );
-		memcpy( matrix->name, (char*)++p, size ); 
-		matrix->name[size] = 0;
-		p+= (size>>2);
+void readMATtag( char ** buffer, uint32_t * data_type, uint32_t * size ){
+	* data_type = * (uint32_t*) (*buffer);
+	if( (* data_type) & 0xFFFF0000 ){
+		* size      = (* data_type & 0xFFFF0000) >> 16;
+		* data_type =  * data_type & 0x0000FFFF;
+		* buffer = (*buffer)+4;
 	} else {
-		if( *p != miINT8 ) die("Char array was expected got %p on byte %p", *p, (char*)p - buffer);
-		p++;
-		matrix->name = malloc( *p + 1);
-		memcpy( matrix->name, (char*)(p+1), *p );
-		matrix->name[*p] = 0;
-		p += 1 + (*p>>2);
+		* size   = * (uint32_t*) ((*buffer)+4);
+		* buffer = (*buffer)+8;
 	}
-	if( *p&0xFFFF0000 ){
-		short size = *p & 0xFFFF0000 >> 16;
-		short type = *p & 0x0000FFFF;
-		if( type > miUINT64 || type == 8 || type == 10 || type == 11 )
-			die("Number array was expected (Compressed) got %p on byte %p",type, (char*)p - buffer );
-		matrix->type = type;
-		matrix->data = malloc( size );
-		memcpy( matrix->data, (char*)++p, size );
-		p+= (size>>2);
-	}else{
-		if( *p > miUINT64 || *p == 8 || *p == 10 || *p == 11 )
-			die("Number array was expected got %p on byte %p", *p, (char*)p - buffer );
-		matrix->type = *p;
-		p++;
-		matrix->data = malloc( *p );
-		memcpy( matrix->data, (char*)(p+1), *p );
-		p += 1 + (*p>>2);
-	}
-	free( buffer );
+	//printf("Data type: %s, size: %u\n", mat_data_string[*data_type], * size );
+}
+
+void printMATmiMatrix( miMatrix * matrix ){
+	printf(mat_data_string[miMATRIX]);
+	printf(" \"%.*s\"", matrix->name_lenght, matrix->name );
+	if( matrix->complex )
+		printf("complex ");
+	if( matrix->global )
+		printf("global ");
+	if( matrix->logical )
+		printf("logical ");
+	printf(" %s (", mat_array_string[matrix->class] );
+	for( ssize_t i=0; i<matrix->dimentions; i++)
+		printf("%u%c", matrix->shape[i], i+1==matrix->dimentions ? ')' : ',' );
+	printf("\n");
+}
+
+void * loadMATmiMatrix( char * buffer, uint32_t size ){
+	miMatrix * matrix = malloc( sizeof( miMatrix ) );
+	uint32_t type, bytes;
+
+	readMATtag( &buffer, &type, &bytes);
+	matrix->class    = buffer[0];
+	matrix->complex  = buffer[1] & 0x10;
+	matrix->global   = buffer[1] & 0x20;
+	matrix->logical  = buffer[1] & 0x40;
+	matrix->sparce_ceros = * (uint32_t*) (buffer+4);
+	buffer += bytes;
+
+	readMATtag( &buffer, &type, &bytes);
+	matrix->dimentions = bytes / 4;
+	matrix->shape = malloc( bytes );
+	memcpy( (char*) matrix->shape, buffer, bytes );
+	buffer += bytes;
+
+	readMATtag( &buffer, &type, &bytes);
+	matrix->name_lenght = bytes;
+	matrix->name = malloc( bytes );
+	memcpy( (char*) matrix->name, buffer, bytes );
 	return matrix;
 }
 
-void readHeader( int fd ){
-	if( ! ( flags & 0x08 ) ) {
-		lseek( fd, 128, SEEK_CUR );
-		return;
+void printMATheader( MATheader * header ){
+	printf("%.116s.", header->text );
+	if( header->subsystem_data_offset )
+		printf(" Subsystem Data Offset: %lu.", header->subsystem_data_offset );
+	printf(" Version: %hu. Endian indicator: %.2s.\n", header->version, header->endian );
+}
+
+void skipMATheader( int fd ){ lseek( fd, 128, SEEK_CUR ); }
+
+MATheader * readMATheader( int fd ){
+	MATheader * header = malloc( sizeof(MATheader) );
+	read( fd, & header->text,    116 );
+	read( fd, & header->subsystem_data_offset, 8);
+	read( fd, & header->version, 2   );
+	read( fd, & header->endian,  2   );
+	return header;
+}
+
+void * loadMAT( char * buffer, uint32_t data_type, uint32_t size ){
+	switch( data_type ){
+		case miMATRIX: return loadMATmiMatrix( buffer, size );
 	}
-	char * buffer = malloc( 116 );
-
-	read( fd, buffer, 116 );
-	fprintf(stderr, "%.116s\n", buffer );
-	free( buffer );
-
-	long int offset = 0;
-	read( fd, & offset, 8 );
-	if( offset ) fprintf(stderr, "%li offset bytes to subsystem-specific info\n", * ( long int * ) buffer );
-
-	int version_im = 0;
-	read( fd, & version_im, 4 );
-	fprintf(stderr, "Mat file version: %hu\tEndian indicator %c%c %s\n",
-		(version_im&0x0000FFFF)>>0,
-		(version_im&0xFF000000)>>24,
-		(version_im&0x00FF0000)>>16,
-		(version_im&0xFF000000)>>24 == 'I' ? "(Must reverse)" : ""
-	);
+	die("i will code this, I promise");
+	return NULL;
 }
 
-Matrix * readMatrix( int fd ){
-	unsigned int type, size;
-	read( fd, &type, 4 );
-	read( fd, &size, 4 );
-	if( type != 14 && type != 15 ) die("Expected a miMatrix or miCompressed with a miMatrix");
-	char * buffer = malloc( size );
-	read( fd, buffer, size );
-	Matrix * matrix = malloc( sizeof(Matrix) );
-	if( type == 14 )
-		matrix = initMatrix( buffer );
-	else if( type == 15 )
-		matrix = initMatrix( zundo( buffer, size ) );
-	if( flags & 0x02 )
-		printMatrix( * matrix );
-	return matrix;
+void * uncompressMAT( int fd, uint32_t * data_type, uint32_t * size ){
+	char * compressed = malloc( * size );
+	read( fd, compressed, * size );
+	char * uncompressed = zundo( compressed, size );
+	readMATtag( & uncompressed, data_type, size );
+	free( compressed );
+	return loadMAT( uncompressed, * data_type, * size );
 }
 
-WeightMatrix * initWeightMatrix( unsigned int nodes, unsigned edges, Matrix * matrix){
-	if( matrix->dims_size > 2 )
-		die("2D Weight matrix was expected");
-	if( matrix->dims[1] != 3 )
-		die("Weight matrix must have exactly 3 colums");
-	WeightMatrix * wm = malloc( sizeof( WeightMatrix ) );
-	wm->nodes = nodes;
-	wm->edges = edges;
-	wm->i = malloc( sizeof(int)    * matrix->dims[0] );
-	wm->j = malloc( sizeof(int)    * matrix->dims[0] );
-	wm->w = malloc( sizeof(double) * matrix->dims[0] );
-	switch( matrix->type ){
-		case miINT8:  case miUINT8: 
-			for( unsigned int n=0; n<matrix->dims[0];n++){
-				wm->i[n] = ((char*)matrix->data)[matrix->dims[0]*0+n];
-				wm->j[n] = ((char*)matrix->data)[matrix->dims[0]*1+n];
-				wm->w[n] = ((char*)matrix->data)[matrix->dims[0]*2+n];
-			}
-		break;
-		case miINT16:  case miUINT16: 
-			for( unsigned int n=0; n<matrix->dims[0];n++){
-				wm->i[n] = ((short*)matrix->data)[matrix->dims[0]*0+n];
-				wm->j[n] = ((short*)matrix->data)[matrix->dims[0]*1+n];
-				wm->w[n] = ((short*)matrix->data)[matrix->dims[0]*2+n];
-			}
-		break;
-		case miINT32:  case miUINT32: 
-			for( unsigned int n=0; n<matrix->dims[0];n++){
-				wm->i[n] = ((int*)matrix->data)[matrix->dims[0]*0+n];
-				wm->j[n] = ((int*)matrix->data)[matrix->dims[0]*1+n];
-				wm->w[n] = ((int*)matrix->data)[matrix->dims[0]*2+n];
-			}
-		break;
-		default: die("miMAT-Data not supported");
-	}
-	//printWeightMatrix( * wm );
-	return wm;
-}
+void * readMATnext( int fd, uint32_t * data_type, uint32_t * size ){
+	if( ! read( fd, data_type, 4 ) ) return NULL;
 
-void mimatrix( char * buffer, ssize_t size ){
-	int type = *(int*)buffer;
-	printf("\tType: %s, ", mat_data_string[type] );
-	buffer+=4;
-	type = *(int*) buffer ;
-	printf("size: %u\n", type );
-	buffer+=4;
-	char flags = buffer[1];
-	char class = buffer[0];
-	printf("\tFlags: COMPLEX: %hhu, GLOBAL: %hhu, LOGICAL: %hhu, HEXA: %02X\n", flags & 0x10, flags & 0x20, flags & 0x40, flags );
-	printf("\tClass: %s\n", mat_array_string[class]);
-	buffer += 4;
-	int max_sparce = *(int*) buffer;
-	printf("\tMax zeros: %u\n", max_sparce );
+	if( * data_type & 0xFFFF0000 ){
+		* size      = (* data_type & 0xFFFF0000) >> 16;
+		* data_type =  * data_type & 0x0000FFFF;
+	} else read( fd, size, 4 );
+
+	if( * data_type == miCOMPRESSED )
+		return uncompressMAT( fd, data_type, size );
+
+	char * buffer = malloc( * size );
+	read( fd, buffer, * size );
+	return loadMAT(buffer, * data_type, * size );
 }
 
 void run( char * path ){
 	int fd = open( path, O_RDONLY );
 	if( fd < 0 ) die("fail on open %s:", path );
+	
+	printMATheader( readMATheader( fd ) );
 
-	char * header = malloc( 116 );
-	read( fd, header, 116 );
-	printf("%.116s\n", header );
-	uint64_t off_sub_sys = 0;
-	read( fd, & off_sub_sys, 8 );
-	if( off_sub_sys ) printf("Offset to sub-system info: %lu\n", off_sub_sys );
-	uint16_t version;
-	read( fd, & version, 2 );
-	printf("Version: %hu\n", version );
-	char endian[2];
-	read( fd, & endian, 2 );
-	printf("Endian %.2s\n", endian );
 	uint32_t data_type, num_bytes;
-	while( read( fd, & data_type, 4 ) &&  read( fd, & num_bytes, 4 ) ){
-		if( data_type == miCOMPRESSED ){
-			char * buffer = malloc( num_bytes );
-			read( fd, buffer, num_bytes );
-			char * buffer2 = zundo( buffer, num_bytes );
-			printf("Data type: %s, size: %u\n", mat_data_string[ * (int*) buffer2 ], *(int*) (buffer+4) );
-			if( * (int*) buffer2 == miMATRIX ) mimatrix( buffer2 + 8, *(int*) (buffer+4) );
-			free( buffer );
-			free( buffer2 );
-		} else {
-			printf("Data type: %s, size: %u\n", mat_data_string[data_type], num_bytes );
-			lseek( fd, num_bytes, SEEK_CUR );
-		}
+
+	void * object;
+
+	while( (object = readMATnext( fd, & data_type, & num_bytes )) ){
+		if( data_type == miMATRIX )
+			printMATmiMatrix( object );
 	}
 }
 
@@ -274,11 +211,8 @@ void usage(){
 	exit(0);
 }
 
-
 int main(int argc, char ** argv){
-	for( uint32_t i=1; i<argc; i++){
+	for( uint32_t i=1; i<argc; i++)
 		if( ! strcmp( argv[i], "-h" ) ) usage();
 		else run( argv[i] );
-	}
-	return 0;
 }
