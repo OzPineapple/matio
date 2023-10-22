@@ -207,6 +207,7 @@ void * loadMATmiMatrix( char * buffer, uint32_t size ){
 		case mxCHAR_CLASS   :
 		case mxSPARSE_CLASS :
 			matrix->content = NULL;
+		break;
 		case mxUINT8_CLASS  :
 		case mxINT8_CLASS   :
 		case mxUINT16_CLASS :
