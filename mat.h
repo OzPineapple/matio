@@ -49,5 +49,6 @@ enum mat_data_type  { FOREACH_MATTYPE(  GENERATE_ENUM ) };
 enum mat_array_type { FOREACH_MATARRAY( GENERATE_ENUM ) };
 static const char * mat_data_string[]  = { FOREACH_MATTYPE(  GENERATE_STRING ) };
 static const char * mat_array_string[] = { FOREACH_MATARRAY( GENERATE_STRING ) };
-
+static const char mat_data_size[]  = { 0, 1, 1, 2, 2, 4, 4, 4, 0, 8, 0, 0, 8, 8, 0, 0, 0, 0, 0 };
+static const char mat_array_size[] = { 0, 0, 0, 0, 0, 0, 8, 4, 1, 1, 2, 2, 4, 4, 8, 8 };
 #endif // MAT_H

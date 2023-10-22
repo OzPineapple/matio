@@ -113,8 +113,67 @@ void printMATmiMatrix( miMatrix * matrix ){
 	printf("\n");
 }
 
-void * loadMATmiMatrix( char * buffer, uint32_t size ){
-	miMatrix * matrix = malloc( sizeof( miMatrix ) );
+void arraycpy( void * dest, enum mat_array_type dest_type , void * source, enum mat_data_type source_type, ssize_t length){
+	#define FOR_TYPES( DEST_TYPE, SOURCE_TYPE ) \
+		for( ssize_t i=0; i<length; i++ ) \
+			((DEST_TYPE*) dest)[i] = (DEST_TYPE) ((SOURCE_TYPE*) source)[i];
+	#define SWITCH_TYPE( DEST_TYPE, SOURCE_TYPE ) \
+		switch( SOURCE_TYPE ){ \
+			case miUINT8: \
+			case miINT8: \
+				FOR_TYPES( DEST_TYPE, int8_t )\
+			break;\
+			case miUINT16: \
+			case miINT16: \
+				FOR_TYPES( DEST_TYPE, int16_t )\
+			break;\
+			case miUINT32: \
+			case miINT32: \
+				FOR_TYPES( DEST_TYPE, int32_t )\
+			break;\
+			case miUINT64: \
+			case miINT64: \
+				FOR_TYPES( DEST_TYPE, int64_t ) \
+			break;\
+			case miSINGLE: \
+				FOR_TYPES( DEST_TYPE, float ) \
+			break;\
+			case miDOUBLE: \
+				FOR_TYPES( DEST_TYPE, double ) \
+			break;\
+			default: \
+				die("Error: %s to %s.", mat_data_string[source_type], mat_array_string[dest_type]); \
+		}
+	switch( dest_type ){
+		case mxUINT8_CLASS:
+		case mxINT8_CLASS:
+		        SWITCH_TYPE( int8_t, source_type )
+		break;
+		case mxUINT16_CLASS:
+		case mxINT16_CLASS:
+		        SWITCH_TYPE( int8_t, source_type )
+		break;
+		case mxUINT32_CLASS:
+		case mxINT32_CLASS:
+		        SWITCH_TYPE( int8_t, source_type )
+		break;
+		case mxUINT64_CLASS:
+		case mxINT64_CLASS:
+		        SWITCH_TYPE( int8_t, source_type )
+		break;
+		case mxSINGLE_CLASS:
+		        SWITCH_TYPE( float, source_type )
+		break;
+		case mxDOUBLE_CLASS:
+			SWITCH_TYPE( double, source_type )
+		break;
+		default:
+			die("Error: %s to %s.", mat_data_string[source_type], mat_array_string[dest_type]);
+	}
+}
+
+
+void * loadMATmiNumericMatrix( char * buffer_src, uint32_t size, miMatrixHeader * header ){
 	uint32_t type, bytes;
 
 	readMATtag( &buffer, &type, &bytes);
