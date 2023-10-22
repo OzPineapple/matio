@@ -80,7 +80,6 @@ typedef struct {
 	uint32_t class;
 	uint32_t dimentions;
 	int32_t  * shape;
-	uint32_t name_lenght;
 	uint8_t  * name;
 	uint32_t data_lenght;
 	uint32_t * data;
@@ -101,7 +100,7 @@ void readMATtag( char ** buffer, uint32_t * data_type, uint32_t * size ){
 
 void printMATmiMatrix( miMatrix * matrix ){
 	printf(mat_data_string[miMATRIX]);
-	printf(" \"%.*s\"", matrix->name_lenght, matrix->name );
+	printf(" \"%s\"", matrix->name );
 	if( matrix->complex )
 		printf("complex ");
 	if( matrix->global )
@@ -133,8 +132,8 @@ void * loadMATmiMatrix( char * buffer, uint32_t size ){
 	buffer += bytes;
 
 	readMATtag( &buffer, &type, &bytes);
-	matrix->name_lenght = bytes;
-	matrix->name = malloc( bytes );
+	matrix->name = malloc( bytes + 1 );
+	matrix->name[bytes] = 0;
 	memcpy( (char*) matrix->name, buffer, bytes );
 	return matrix;
 }
