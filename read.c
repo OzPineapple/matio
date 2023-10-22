@@ -154,18 +154,17 @@ void arraycpy( void * dest, enum mat_array_type dest_type , void * source, enum 
 
 #define PLUS64( x ) x + ( x <= 4 ? 4 - x : x % 8 ? 8 - ( x % 8 ) : 0 )
 
-void * loadMATmiNumericMatrix( char * buffer_src, uint32_t size, miMatrixHeader * header ){
+void * loadMATmiNumericMatrix( char * buffer, uint32_t size, miMatrixHeader * header ){
 	uint32_t type, bytes;
-	char * buffer = buffer_src;
 	miNumericMatrix * matrix = malloc( sizeof( miNumericMatrix ) );
 
 	readMATtag( &buffer, &type, &bytes);
 	ssize_t length = bytes / mat_data_size[ type ];
 	matrix->real = malloc( mat_array_size[ header->class ] * length );
 	arraycpy( matrix->real, header->class, buffer, type, length );
-	buffer += PLUS64( bytes );
 
 	if( header->complex ){
+		buffer += PLUS64( bytes );
 		readMATtag( &buffer, &type, &bytes);
 		length = bytes / mat_data_size[ type ];
 		matrix->imaginary = malloc( mat_array_size[ header->class ] * length );
@@ -175,8 +174,7 @@ void * loadMATmiNumericMatrix( char * buffer_src, uint32_t size, miMatrixHeader 
 	return matrix;
 }
 
-void * loadMATmiMatrix( char * buffer_src, uint32_t size ){
-	char * buffer = buffer_src;
+void * loadMATmiMatrix( char * buffer, uint32_t size ){
 	miMatrix * matrix = malloc( sizeof( miMatrix ) );
 	miMatrixHeader * header = malloc( sizeof( miMatrixHeader ) );
 	matrix->header = header;
