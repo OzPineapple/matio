@@ -51,4 +51,46 @@ static const char * mat_data_string[]  = { FOREACH_MATTYPE(  GENERATE_STRING ) }
 static const char * mat_array_string[] = { FOREACH_MATARRAY( GENERATE_STRING ) };
 static const char mat_data_size[]  = { 0, 1, 1, 2, 2, 4, 4, 4, 0, 8, 0, 0, 8, 8, 0, 0, 0, 0, 0 };
 static const char mat_array_size[] = { 0, 0, 0, 0, 0, 0, 8, 4, 1, 1, 2, 2, 4, 4, 8, 8 };
+
+typedef struct {
+	uint8_t  text[116];
+	uint64_t subsystem_data_offset;
+	uint16_t version;
+	uint8_t  endian[2];
+} MATheader;
+
+typedef struct {
+	uint8_t    complex:1;
+	uint8_t    global:1;
+	uint8_t    logical:1;
+	uint8_t  * name;
+	uint16_t   class;
+	uint32_t   dimentions;
+	uint32_t * shape;
+	uint32_t   sparce_ceros;
+} miMatrixHeader;
+
+typedef struct {
+	void * real;
+	void * imaginary;
+} miNumericMatrix;
+
+typedef struct {
+	uint32_t   maxceros;
+	int32_t  * row;
+	int32_t  * colum;
+	void * real;
+	void * imaginary;
+} miSparseMatrix;
+
+typedef struct {
+	uint32_t   length;
+	uint8_t  * data;
+} miStructMatrix;
+
+typedef struct {
+	miMatrixHeader * header;
+	void * content;
+} miMatrix;
+
 #endif // MAT_H
