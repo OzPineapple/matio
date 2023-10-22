@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 #include "util.h"
-#include "read.h"
+#include "mat.h"
 
 char flags = 0;
 
