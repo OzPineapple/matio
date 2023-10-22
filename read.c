@@ -123,18 +123,21 @@ void * loadMATmiMatrix( char * buffer, uint32_t size ){
 	matrix->global   = buffer[1] & 0x20;
 	matrix->logical  = buffer[1] & 0x40;
 	matrix->sparce_ceros = * (uint32_t*) (buffer+4);
-	buffer += bytes;
+	buffer += bytes + bytes%8?8-bytes%8:0;
 
 	readMATtag( &buffer, &type, &bytes);
 	matrix->dimentions = bytes / 4;
 	matrix->shape = malloc( bytes );
 	memcpy( (char*) matrix->shape, buffer, bytes );
-	buffer += bytes;
+	buffer += bytes + bytes%8?8-bytes%8:0;
 
 	readMATtag( &buffer, &type, &bytes);
 	matrix->name = malloc( bytes + 1 );
 	matrix->name[bytes] = 0;
 	memcpy( (char*) matrix->name, buffer, bytes );
+	buffer += bytes + bytes%8?8-bytes%8:0;
+
+	readMATtag( &buffer, &type, &bytes);
 	return matrix;
 }
 
