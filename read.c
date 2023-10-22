@@ -9,9 +9,7 @@
 #include "util.h"
 #include "mat.h"
 
-char flags = 0;
-
-char * zundo( char * compress , unsigned int size ){
+char * zundo( char * compress , unsigned int * size ){
 	int ret;
 	z_stream strm;
 	char * uncompress = malloc( ZCHUNK );
@@ -22,10 +20,10 @@ char * zundo( char * compress , unsigned int size ){
 
 	inflateInit(&strm);
 
-	strm.avail_in  = size;
-	strm.next_in   = compress;
+	strm.avail_in  = * size;
+	strm.next_in   = (unsigned char*) compress;
 	strm.avail_out = ZCHUNK;
-	strm.next_out  = uncompress;
+	strm.next_out  = (unsigned char*) uncompress;
 
 	//fprintf(stderr,"zlib init with a %i buffer byte long\n", ZCHUNK );
 
@@ -47,19 +45,21 @@ char * zundo( char * compress , unsigned int size ){
 	}
 
 	//fprintf(stderr,"strm: {" 
-	//		"\n\tavail_in: %i, next_in: %p, total_in: %i,"
-	//		"\n\tavail_out: %i, next_out: %p, total_out: %i\n"
+	//		"\n\tavail_in: %u, next_in: %p, total_in: %lu,"
+	//		"\n\tavail_out: %u, next_out: %p, total_out: %lu\n"
 	//	"}\n",
 	//	strm.avail_in, strm.next_in, strm.total_in,
 	//	strm.avail_out, strm.next_out, strm.total_out
 	//);
 
-	if( flags & 0x01 ) for( int i = 0; i < strm.total_out; i++)
+	if( 0 ) for( int i = 0; i < strm.total_out; i++)
 		putchar( uncompress[i] );
 	
 	if( ZCHUNK > strm.total_out )
 		uncompress = realloc( uncompress, strm.total_out );
 	
+	* size = strm.total_out;
+
 	inflateEnd(&strm);
 
 	return uncompress;

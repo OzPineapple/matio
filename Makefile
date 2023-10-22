@@ -1,3 +1,3 @@
 default:
-	gcc *c -lz
+	gcc -Wall *c -lz -g
 	./a.out *.mat
