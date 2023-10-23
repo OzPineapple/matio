@@ -93,6 +93,40 @@ void printMATmiMatrixHeader( miMatrixHeader * header ){
 	printf("\n");
 }
 
+enum mat_array_type MATdata2class( enum mat_data_type type ){
+	switch( type ){
+		case miUINT8 : return mxUINT8_CLASS ;
+		case miINT8  : return mxINT8_CLASS  ;
+		case miUINT16: return mxUINT16_CLASS;
+		case miINT16 : return mxINT16_CLASS ;
+		case miUINT32: return mxUINT32_CLASS;
+		case miINT32 : return mxINT32_CLASS ;
+		case miUINT64: return mxUINT64_CLASS;
+		case miINT64 : return mxINT64_CLASS ;
+		case miSINGLE: return mxSINGLE_CLASS;
+		case miDOUBLE: return mxDOUBLE_CLASS;
+		default: die("Error: %s not a number data type.", mat_data_string[type]);
+	}
+	return 0;
+}
+
+enum mat_data_type MATclass2type( enum mat_array_type type ){
+	switch( type ){
+		case mxUINT8_CLASS : return miUINT8 ;
+		case mxINT8_CLASS  : return miINT8  ;
+		case mxUINT16_CLASS: return miUINT16;
+		case mxINT16_CLASS : return miINT16 ;
+		case mxUINT32_CLASS: return miUINT32;
+		case mxINT32_CLASS : return miINT32 ;
+		case mxUINT64_CLASS: return miUINT64;
+		case mxINT64_CLASS : return miINT64 ;
+		case mxSINGLE_CLASS: return miSINGLE;
+		case mxDOUBLE_CLASS: return miDOUBLE;
+		default: die("Error: %s not a number class.", mat_array_string[type]);
+	}
+	return 0;
+}
+
 void arraycpy( void * dest, enum mat_array_type dest_type , void * source, enum mat_data_type source_type, ssize_t length){
 	#define FOR_TYPES( DEST_TYPE, SOURCE_TYPE ) \
 		for( ssize_t i=0; i<length; i++ ) \
@@ -124,27 +158,27 @@ void arraycpy( void * dest, enum mat_array_type dest_type , void * source, enum 
 			default: \
 				die("Error: %s to %s.", mat_data_string[source_type], mat_array_string[dest_type]); \
 		}
-	switch( dest_type ){
-		case mxUINT8_CLASS:
-		case mxINT8_CLASS:
+	switch( MATclass2type( dest_type ) ){
+		case miUINT8:
+		case miINT8:
 		        SWITCH_TYPE( int8_t, source_type )
 		break;
-		case mxUINT16_CLASS:
-		case mxINT16_CLASS:
-		        SWITCH_TYPE( int8_t, source_type )
+		case miUINT16:
+		case miINT16:
+		        SWITCH_TYPE( int16_t, source_type )
 		break;
-		case mxUINT32_CLASS:
-		case mxINT32_CLASS:
-		        SWITCH_TYPE( int8_t, source_type )
+		case miUINT32:
+		case miINT32:
+		        SWITCH_TYPE( int32_t, source_type )
 		break;
-		case mxUINT64_CLASS:
-		case mxINT64_CLASS:
-		        SWITCH_TYPE( int8_t, source_type )
+		case miUINT64:
+		case miINT64:
+		        SWITCH_TYPE( int64_t, source_type )
 		break;
-		case mxSINGLE_CLASS:
+		case miSINGLE:
 		        SWITCH_TYPE( float, source_type )
 		break;
-		case mxDOUBLE_CLASS:
+		case miDOUBLE:
 			SWITCH_TYPE( double, source_type )
 		break;
 		default:
