@@ -188,6 +188,37 @@ void arraycpy( void * dest, enum mat_array_type dest_type , void * source, enum 
 
 #define PLUS64( x ) x + ( x <= 4 ? 4 - x : x % 8 ? 8 - ( x % 8 ) : 0 )
 
+void * loadMATmiSparceMatrix( char * buffer, uint32_t size, miMatrixHeader * header ){
+	uint32_t type, bytes, length;
+	miSparseMatrix * matrix = malloc( sizeof( miSparseMatrix ) );
+
+	readMATtag( &buffer, &type, &bytes);
+	length = bytes / mat_data_size[ type ];
+	matrix->row = malloc( mat_array_size[ mxUINT32_CLASS ] * length );
+	arraycpy( matrix->row, mxUINT32_CLASS, buffer, type, length );
+	buffer += PLUS64( bytes );
+
+	readMATtag( &buffer, &type, &bytes);
+	length = bytes / mat_data_size[ type ];
+	matrix->colum = malloc( mat_array_size[ mxUINT32_CLASS ] * length );
+	arraycpy( matrix->colum, mxUINT32_CLASS, buffer, type, length );
+	buffer += PLUS64( bytes );
+
+	readMATtag( &buffer, &type, &bytes);
+	length = bytes / mat_data_size[ type ];
+	matrix->real = malloc( bytes );
+	arraycpy( matrix->real, MATdata2class( type ), buffer, type, length );
+
+	if( header->complex ){
+		buffer += PLUS64( bytes );
+		readMATtag( &buffer, &type, &bytes);
+		length = bytes / mat_data_size[ type ];
+		matrix->imaginary = malloc( bytes );
+		arraycpy( matrix->imaginary, MATdata2class(type), buffer, type, length );
+	} else matrix->imaginary = NULL;
+
+	return matrix;
+}
 void * loadMATmiNumericMatrix( char * buffer, uint32_t size, miMatrixHeader * header ){
 	uint32_t type, bytes;
 	miNumericMatrix * matrix = malloc( sizeof( miNumericMatrix ) );
@@ -239,8 +270,10 @@ void * loadMATmiMatrix( char * buffer, uint32_t size ){
 		case mxSTRUCT_CLASS :
 		case mxOBJECT_CLASS :
 		case mxCHAR_CLASS   :
-		case mxSPARSE_CLASS :
 			matrix->content = NULL;
+		break;
+		case mxSPARSE_CLASS :
+			matrix->content = loadMATmiSparceMatrix( buffer, size, header );
 		break;
 		case mxUINT8_CLASS  :
 		case mxINT8_CLASS   :

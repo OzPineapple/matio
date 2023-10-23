@@ -77,8 +77,8 @@ typedef struct {
 
 typedef struct {
 	uint32_t   maxceros;
-	int32_t  * row;
-	int32_t  * colum;
+	uint32_t * row;
+	uint32_t * colum;
 	void * real;
 	void * imaginary;
 } miSparseMatrix;
