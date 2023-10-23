@@ -65,34 +65,6 @@ char * zundo( char * compress , unsigned int * size ){
 	return uncompress;
 }
 
-void readMATtag( char ** buffer, uint32_t * data_type, uint32_t * size ){
-	* data_type = * (uint32_t*) (*buffer);
-	if( (* data_type) & 0xFFFF0000 ){
-		* size      = (* data_type & 0xFFFF0000) >> 16;
-		* data_type =  * data_type & 0x0000FFFF;
-		* buffer = (*buffer)+4;
-	} else {
-		* size   = * (uint32_t*) ((*buffer)+4);
-		* buffer = (*buffer)+8;
-	}
-	//printf("Data type: %s, size: %u\n", mat_data_string[*data_type], * size );
-}
-
-void printMATmiMatrixHeader( miMatrixHeader * header ){
-	printf(mat_data_string[miMATRIX]);
-	printf(" \"%s\"", header->name );
-	if( header->complex )
-		printf("complex ");
-	if( header->global )
-		printf("global ");
-	if( header->logical )
-		printf("logical ");
-	printf(" %s (", mat_array_string[header->class] );
-	for( ssize_t i=0; i<header->dimentions; i++)
-		printf("%u%c", header->shape[i], i+1==header->dimentions ? ')' : ',' );
-	printf("\n");
-}
-
 enum mat_array_type MATdata2class( enum mat_data_type type ){
 	switch( type ){
 		case miUINT8 : return mxUINT8_CLASS ;
@@ -125,6 +97,183 @@ enum mat_data_type MATclass2type( enum mat_array_type type ){
 		default: die("Error: %s not a number class.", mat_array_string[type]);
 	}
 	return 0;
+}
+
+void readMATtag( char ** buffer, uint32_t * data_type, uint32_t * size ){
+	* data_type = * (uint32_t*) (*buffer);
+	if( (* data_type) & 0xFFFF0000 ){
+		* size      = (* data_type & 0xFFFF0000) >> 16;
+		* data_type =  * data_type & 0x0000FFFF;
+		* buffer = (*buffer)+4;
+	} else {
+		* size   = * (uint32_t*) ((*buffer)+4);
+		* buffer = (*buffer)+8;
+	}
+	//printf("Data type: %s, size: %u\n", mat_data_string[*data_type], * size );
+}
+
+void printMATmiMatrixHeader( miMatrixHeader * header ){
+	printf(mat_data_string[miMATRIX]);
+	printf(" \"%s\"", header->name );
+	if( header->complex )
+		printf("complex ");
+	if( header->global )
+		printf("global ");
+	if( header->logical )
+		printf("logical ");
+	printf(" %s (", mat_array_string[header->class] );
+	for( ssize_t i=0; i<header->dimentions; i++)
+		printf("%u%c", header->shape[i], i+1==header->dimentions ? ')' : ',' );
+}
+
+void printMATmiSparseMatrix( miMatrix * matrix ){
+	#define FOR_TYPE_PRINT( TYPE, A, L, FORMAT ) \
+		for( ssize_t pre_for_type_index=0;pre_for_type_index<L;pre_for_type_index++){ \
+			printf(FORMAT, ((TYPE*)A)[pre_for_type_index] );\
+			printf("%c", pre_for_type_index+1==L?'}':','); \
+			if( pre_for_type_index > 50 ){ \
+				printf("...(%li more)}", L-50);\
+				break;\
+			}\
+		}
+	#define SWITCH_TYPE_PRINT( TYPE, A, L ) \
+		switch( TYPE ){ \
+			case miUINT8: \
+				FOR_TYPE_PRINT( uint8_t, A, L, "%hhu" ) \
+			break; \
+			case miINT8: \
+				FOR_TYPE_PRINT( int8_t, A, L, "%hhi" ) \
+			break; \
+			case miUINT16: \
+				FOR_TYPE_PRINT( uint16_t, A, L, "%hu" ) \
+			break; \
+			case miINT16: \
+				FOR_TYPE_PRINT( int16_t, A, L, "%hi" ) \
+			break; \
+			case miUINT32: \
+				FOR_TYPE_PRINT( uint32_t, A, L, "%u" ) \
+			break; \
+			case miINT32: \
+				FOR_TYPE_PRINT( int32_t, A, L, "%i" ) \
+			break; \
+			case miUINT64: \
+				FOR_TYPE_PRINT( uint64_t, A, L, "%lu" ) \
+			break; \
+			case miINT64: \
+				FOR_TYPE_PRINT( int64_t, A, L, "%li" ) \
+			break; \
+			case miSINGLE: \
+				FOR_TYPE_PRINT( float, A, L, "%f" ) \
+			break; \
+			case miDOUBLE: \
+				FOR_TYPE_PRINT( double, A, L, "%lf" ) \
+			break; \
+			default: \
+				die("Error: %s not a numeric data type.", mat_data_string[TYPE] ); \
+		}
+	miSparseMatrix * sparse = (miSparseMatrix*) matrix->content;
+	ssize_t length = 1;
+	for( ssize_t i=0; i<matrix->header->dimentions; i++ )
+		length *= matrix->header->shape[i];
+	printf("Rows: {");
+	FOR_TYPE_PRINT( uint32_t, sparse->row, matrix->header->shape[0], "%u" )
+	printf(", Columns {");
+	FOR_TYPE_PRINT( uint32_t, sparse->colum, matrix->header->shape[0], "%u" )
+	printf(", Real {");
+	SWITCH_TYPE_PRINT( sparse->real_type , sparse->real, length )
+	if( matrix->header->complex ){
+		printf(", Imaginary {");
+		SWITCH_TYPE_PRINT( sparse->imaginary_type , sparse->imaginary, length )
+		printf("\n");
+	}
+}
+
+void printMATmiNumericMatrix( miMatrix * matrix ){
+	#define FOR_TYPE_PRINT( TYPE, A, L, FORMAT ) \
+		for( ssize_t pre_for_type_index=0;pre_for_type_index<L;pre_for_type_index++){ \
+			printf(FORMAT, ((TYPE*)A)[pre_for_type_index] );\
+			printf("%c", pre_for_type_index+1==L?'}':','); \
+			if( pre_for_type_index > 50 ){ \
+				printf("...(%li more)}", L-50);\
+				break;\
+			}\
+		}
+	#define SWITCH_TYPE_PRINT( TYPE, A, L ) \
+		switch( TYPE ){ \
+			case miUINT8: \
+				FOR_TYPE_PRINT( uint8_t, A, L, "%hhu" ) \
+			break; \
+			case miINT8: \
+				FOR_TYPE_PRINT( int8_t, A, L, "%hhi" ) \
+			break; \
+			case miUINT16: \
+				FOR_TYPE_PRINT( uint16_t, A, L, "%hu" ) \
+			break; \
+			case miINT16: \
+				FOR_TYPE_PRINT( int16_t, A, L, "%hi" ) \
+			break; \
+			case miUINT32: \
+				FOR_TYPE_PRINT( uint32_t, A, L, "%u" ) \
+			break; \
+			case miINT32: \
+				FOR_TYPE_PRINT( int32_t, A, L, "%i" ) \
+			break; \
+			case miUINT64: \
+				FOR_TYPE_PRINT( uint64_t, A, L, "%lu" ) \
+			break; \
+			case miINT64: \
+				FOR_TYPE_PRINT( int64_t, A, L, "%li" ) \
+			break; \
+			case miSINGLE: \
+				FOR_TYPE_PRINT( float, A, L, "%f" ) \
+			break; \
+			case miDOUBLE: \
+				FOR_TYPE_PRINT( double, A, L, "%lf" ) \
+			break; \
+			default: \
+				die("Error: %s not a numeric data type.", mat_data_string[TYPE] ); \
+		}
+	ssize_t length = 1;
+	for( ssize_t i=0; i<matrix->header->dimentions; i++ )
+		length *= matrix->header->shape[i];
+	printf("Real {");
+	SWITCH_TYPE_PRINT( MATclass2type( matrix->header->class ), ((miNumericMatrix*)matrix->content)->real, length )
+	if( matrix->header->complex ){
+		printf(", Imaginary {");
+		SWITCH_TYPE_PRINT( MATclass2type( matrix->header->class ), ((miNumericMatrix*)matrix->content)->imaginary, length )
+		printf("\n");
+	}
+}
+
+void printMATmiMatrix( miMatrix * matrix ){
+	printMATmiMatrixHeader( matrix->header );
+	printf(": ");
+	switch( matrix->header->class ){
+		default:
+		case UNKHOW_ARRAY   :
+		case mxCELL_CLASS   :
+		case mxSTRUCT_CLASS :
+		case mxOBJECT_CLASS :
+		case mxCHAR_CLASS   :
+			printf("This type is not supported yet.");
+		break;
+		case mxSPARSE_CLASS :
+			printMATmiSparseMatrix( matrix );
+		break;
+		case mxUINT8_CLASS  :
+		case mxINT8_CLASS   :
+		case mxUINT16_CLASS :
+		case mxINT16_CLASS  :
+		case mxUINT32_CLASS :
+		case mxINT32_CLASS  :
+		case mxUINT64_CLASS :
+		case mxINT64_CLASS  :
+		case mxSINGLE_CLASS :
+		case mxDOUBLE_CLASS :
+			printMATmiNumericMatrix( matrix );
+		break;
+	}
+	printf("\n");
 }
 
 void arraycpy( void * dest, enum mat_array_type dest_type , void * source, enum mat_data_type source_type, ssize_t length){
@@ -207,6 +356,7 @@ void * loadMATmiSparceMatrix( char * buffer, uint32_t size, miMatrixHeader * hea
 	readMATtag( &buffer, &type, &bytes);
 	length = bytes / mat_data_size[ type ];
 	matrix->real = malloc( bytes );
+	matrix->real_type = type;
 	arraycpy( matrix->real, MATdata2class( type ), buffer, type, length );
 
 	if( header->complex ){
@@ -214,6 +364,7 @@ void * loadMATmiSparceMatrix( char * buffer, uint32_t size, miMatrixHeader * hea
 		readMATtag( &buffer, &type, &bytes);
 		length = bytes / mat_data_size[ type ];
 		matrix->imaginary = malloc( bytes );
+		matrix->imaginary_type = type;
 		arraycpy( matrix->imaginary, MATdata2class(type), buffer, type, length );
 	} else matrix->imaginary = NULL;
 
@@ -359,7 +510,7 @@ void run( char * path ){
 
 	while( (object = readMATnext( fd, & data_type, & num_bytes )) ){
 		if( data_type == miMATRIX )
-			printMATmiMatrixHeader( ((miMatrix*)object)->header );
+			printMATmiMatrix( object );
 		else
 			printf("Got un-readable %s.\n", mat_data_string[data_type]);
 	}

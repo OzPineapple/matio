@@ -79,7 +79,9 @@ typedef struct {
 	uint32_t   maxceros;
 	uint32_t * row;
 	uint32_t * colum;
+	enum mat_data_type real_type;
 	void * real;
+	enum mat_data_type imaginary_type;
 	void * imaginary;
 } miSparseMatrix;
 
