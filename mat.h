@@ -77,11 +77,15 @@ typedef struct {
 
 typedef struct {
 	uint32_t   maxceros;
+	uint32_t   rows_length;
 	uint32_t * row;
-	uint32_t * colum;
+	uint32_t   columns_length;
+	uint32_t * column;
 	enum mat_data_type real_type;
+	uint32_t   reals_length;
 	void * real;
 	enum mat_data_type imaginary_type;
+	uint32_t   imaginary_length;
 	void * imaginary;
 } miSparseMatrix;
 

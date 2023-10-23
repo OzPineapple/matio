@@ -125,17 +125,17 @@ void printMATmiMatrixHeader( miMatrixHeader * header ){
 	for( ssize_t i=0; i<header->dimentions; i++)
 		printf("%u%c", header->shape[i], i+1==header->dimentions ? ')' : ',' );
 }
+#define FOR_TYPE_PRINT( TYPE, A, L, FORMAT ) \
+	for( ssize_t pre_for_type_index=0;pre_for_type_index<L;pre_for_type_index++){ \
+		printf(FORMAT, ((TYPE*)A)[pre_for_type_index] );\
+		printf("%c", pre_for_type_index+1==L?'}':','); \
+		if( pre_for_type_index > 50 ){ \
+			printf("...(%li more)}", (long int) L-50);\
+			break;\
+		}\
+	}
 
 void printMATmiSparseMatrix( miMatrix * matrix ){
-	#define FOR_TYPE_PRINT( TYPE, A, L, FORMAT ) \
-		for( ssize_t pre_for_type_index=0;pre_for_type_index<L;pre_for_type_index++){ \
-			printf(FORMAT, ((TYPE*)A)[pre_for_type_index] );\
-			printf("%c", pre_for_type_index+1==L?'}':','); \
-			if( pre_for_type_index > 50 ){ \
-				printf("...(%li more)}", L-50);\
-				break;\
-			}\
-		}
 	#define SWITCH_TYPE_PRINT( TYPE, A, L ) \
 		switch( TYPE ){ \
 			case miUINT8: \
@@ -172,32 +172,24 @@ void printMATmiSparseMatrix( miMatrix * matrix ){
 				die("Error: %s not a numeric data type.", mat_data_string[TYPE] ); \
 		}
 	miSparseMatrix * sparse = (miSparseMatrix*) matrix->content;
+	printf("Max ceros (%u)", sparse->maxceros );
 	ssize_t length = 1;
 	for( ssize_t i=0; i<matrix->header->dimentions; i++ )
 		length *= matrix->header->shape[i];
-	printf("Rows: {");
-	FOR_TYPE_PRINT( uint32_t, sparse->row, matrix->header->shape[0], "%u" )
+	printf(" Rows: {");
+	FOR_TYPE_PRINT( uint32_t, sparse->row, sparse->rows_length, "%u" )
 	printf(", Columns {");
-	FOR_TYPE_PRINT( uint32_t, sparse->colum, matrix->header->shape[0], "%u" )
+	FOR_TYPE_PRINT( uint32_t, sparse->column, sparse->columns_length, "%u" )
 	printf(", Real {");
-	SWITCH_TYPE_PRINT( sparse->real_type , sparse->real, length )
+	SWITCH_TYPE_PRINT( sparse->real_type , sparse->real, sparse->reals_length )
 	if( matrix->header->complex ){
 		printf(", Imaginary {");
-		SWITCH_TYPE_PRINT( sparse->imaginary_type , sparse->imaginary, length )
+		SWITCH_TYPE_PRINT( sparse->imaginary_type , sparse->imaginary, sparse->imaginary_length )
 		printf("\n");
 	}
 }
 
 void printMATmiNumericMatrix( miMatrix * matrix ){
-	#define FOR_TYPE_PRINT( TYPE, A, L, FORMAT ) \
-		for( ssize_t pre_for_type_index=0;pre_for_type_index<L;pre_for_type_index++){ \
-			printf(FORMAT, ((TYPE*)A)[pre_for_type_index] );\
-			printf("%c", pre_for_type_index+1==L?'}':','); \
-			if( pre_for_type_index > 50 ){ \
-				printf("...(%li more)}", L-50);\
-				break;\
-			}\
-		}
 	#define SWITCH_TYPE_PRINT( TYPE, A, L ) \
 		switch( TYPE ){ \
 			case miUINT8: \
@@ -343,18 +335,21 @@ void * loadMATmiSparceMatrix( char * buffer, uint32_t size, miMatrixHeader * hea
 
 	readMATtag( &buffer, &type, &bytes);
 	length = bytes / mat_data_size[ type ];
+	matrix->rows_length = length;
 	matrix->row = malloc( mat_array_size[ mxUINT32_CLASS ] * length );
 	arraycpy( matrix->row, mxUINT32_CLASS, buffer, type, length );
 	buffer += PLUS64( bytes );
 
 	readMATtag( &buffer, &type, &bytes);
 	length = bytes / mat_data_size[ type ];
-	matrix->colum = malloc( mat_array_size[ mxUINT32_CLASS ] * length );
-	arraycpy( matrix->colum, mxUINT32_CLASS, buffer, type, length );
+	matrix->columns_length = length;
+	matrix->column = malloc( mat_array_size[ mxUINT32_CLASS ] * length );
+	arraycpy( matrix->column, mxUINT32_CLASS, buffer, type, length );
 	buffer += PLUS64( bytes );
 
 	readMATtag( &buffer, &type, &bytes);
 	length = bytes / mat_data_size[ type ];
+	matrix->reals_length = length;
 	matrix->real = malloc( bytes );
 	matrix->real_type = type;
 	arraycpy( matrix->real, MATdata2class( type ), buffer, type, length );
@@ -363,10 +358,13 @@ void * loadMATmiSparceMatrix( char * buffer, uint32_t size, miMatrixHeader * hea
 		buffer += PLUS64( bytes );
 		readMATtag( &buffer, &type, &bytes);
 		length = bytes / mat_data_size[ type ];
+		matrix->imaginary_length = length;
 		matrix->imaginary = malloc( bytes );
 		matrix->imaginary_type = type;
 		arraycpy( matrix->imaginary, MATdata2class(type), buffer, type, length );
 	} else matrix->imaginary = NULL;
+
+	matrix->maxceros = header->sparce_ceros;
 
 	return matrix;
 }
