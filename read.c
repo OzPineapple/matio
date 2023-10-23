@@ -462,7 +462,7 @@ MATheader * readMATheader( int fd ){
 }
 
 void * loadMAT( char * buffer, uint32_t * data_type, uint32_t * size){
-	readMATtag( & buffer, data_type, size );
+	// readMATtag( & buffer, data_type, size );
 	switch( * data_type ){
 		case miMATRIX: return loadMATmiMatrix( buffer, * size );
 	}
@@ -485,12 +485,14 @@ void * readMATnext( int fd, uint32_t * data_type, uint32_t * size ){
 		read( fd, compressed, * size );
 		char * uncompressed = zundo( compressed, size );
 		free( compressed );
+		readMATtag( & uncompressed, data_type, size );
 		MAT = loadMAT( uncompressed, data_type, size );
 		free( uncompressed );
 		return MAT;
 	}
 
 	char * buffer = malloc( * size );
+	read( fd, buffer, * size );
 	MAT = loadMAT( buffer, data_type, size );
 	free( buffer );
 	return MAT;
