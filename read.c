@@ -483,11 +483,11 @@ void * readMATnext( int fd, uint32_t * data_type, uint32_t * size ){
 	if( * data_type == miCOMPRESSED ){
 		char * compressed = malloc( * size );
 		read( fd, compressed, * size );
-		char * uncompressed = zundo( compressed, size );
+		char * uncompressed = zundo( compressed, size ), * uncompressed_src = uncompressed;
 		free( compressed );
 		readMATtag( & uncompressed, data_type, size );
 		MAT = loadMAT( uncompressed, data_type, size );
-		free( uncompressed );
+		free( uncompressed_src );
 		return MAT;
 	}
 
