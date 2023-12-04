@@ -52,7 +52,7 @@ void uncompress( int argc, char ** argv ){
 		while( (cbuff = loadNextMat( fd_in, & csize )) != NULL ){
 			if( * ( (int*) cbuff ) != 15 ) write( fd_out, cbuff, csize );
 			else {
-				ubuff = zundo(cbuff, csize);
+				ubuff = zundo(cbuff + 8, csize);
 				write( fd_out, ubuff, 4 );
 				write( fd_out, ubuff+4, 4 );
 				write( fd_out, ubuff+8, *(int*)(ubuff+4) );
