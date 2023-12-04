@@ -10,9 +10,9 @@
 
 void compress( int argc, char ** argv ){
 	for( int i=1; i<argc; i++ ){
-		char * path = malloc( strlen( argv[i] ) + 3 );
+		char * path = malloc( strlen( argv[i] ) + 4 );
 		strcpy( path, argv[i] );
-		strcpy( path + strlen( argv[i] ) - 3, "z.mat" );
+		strcpy( path + strlen( argv[i] ) - 4, ".zc.mat" );
 
 		int fd_in  = open( argv[i], O_RDONLY );
 		int fd_out = open( path, O_CREAT | O_TRUNC | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP );
@@ -40,7 +40,7 @@ void uncompress( int argc, char ** argv ){
 	for( int i=1; i<argc; i++ ){
 		char * path = malloc( strlen( argv[i] ) + 4 );
 		strcpy( path, argv[i] );
-		strcpy( path + strlen( argv[i] ) - 4, "nz.mat" );
+		strcpy( path + strlen( argv[i] ) - 4, ".zu.mat" );
 
 		int fd_in  = open( argv[i], O_RDONLY );
 		int fd_out = open( path, O_CREAT | O_TRUNC | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP );
