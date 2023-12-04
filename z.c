@@ -28,14 +28,16 @@ char * zundo( char * compress , unsigned int size ){
 		strm.avail_out = ZCHUNK;
 		strm.next_out  = uncompress + strm.total_out;
 
-		ret = inflate( &strm, Z_FINISH );
+		ret = inflate( &strm, Z_NO_FLUSH );
 
 		switch( ret ){
 			case Z_STREAM_ERROR:
+				die("uncompress data failed by Strem Error:");
 			case Z_DATA_ERROR:
+				die("uncompress data failed by Data Error:");
 			case Z_MEM_ERROR:
+				die("uncompress data failed by Mem Error:");
 				inflateEnd(&strm);
-				die("uncompress data failed:");
 		}
 		blocks++;
 	} while( strm.avail_out == 0 );
