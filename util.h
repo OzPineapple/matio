@@ -4,7 +4,9 @@
 #define MIN(A, B)               ((A) < (B) ? (A) : (B))
 #define BETWEEN(X, A, B)        ((A) <= (X) && (X) <= (B))
 #define TRIANGLE(N)		(N*(N+1)/2)
+#define TRINDIAG(N)		(N*(N-1)/2)
 
+void * erealloc( void * ptr, size_t size );
 void die(const char *fmt, ...);
 void warn(const char *fmt, ...);
 void *ecalloc(size_t nmemb, size_t size);

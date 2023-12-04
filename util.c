@@ -6,6 +6,12 @@
 
 #include "util.h"
 
+void * erealloc( void * ptr, size_t size ){
+	if (!(ptr = realloc(ptr, size)))
+		die("realloc:");
+	return ptr;
+}
+
 void
 die(const char *fmt, ...)
 {
